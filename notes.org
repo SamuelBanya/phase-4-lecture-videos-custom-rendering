@@ -1,0 +1,271 @@
+* Notes
+Sometimes, we don't need to send ALL of the data from the backend to the frontend, which applies to the 'created_at' and 'updated_at' related fields.
+
+With this in mind, I made the following revision to the 'app/controllers/productions_controller.rb' controller file with the following revisions:
+#+begin_src ruby
+class ProductionsController < ApplicationController
+    # NOTE: This is added to wrap the 'params' hash below:
+    wrap_parameters format: []
+    def index
+        productions = Production.all()
+        render json: productions, status: :ok
+    end
+
+    def show
+        production = Production.find_by(id: params[:id])
+
+        if production
+            render json: {
+                title: production.title,
+                genre: production.genre,
+                budget: production.budget,
+                image: production.image,
+                director: production.director,
+                ongoing: production.ongoing,
+                description: production.description
+                }, status: :ok
+        else
+            render json: {error: "production not found"}, status: :not_found
+        end
+    end
+
+    def create
+        # NOTE: I revised this line to instead use 'production_params' from the private method below:
+        # production = Production.create(params)
+        production = Production.create(production_params)
+        render json: production, status: :created
+    end
+
+    def update
+        # find
+        production = Production.find_by(id: params[:id])
+        # update
+        if production
+            production.update(production_params)
+            render json: production, status: :accepted
+        else
+            render json: { error: "Production not found" }, status: :not_found
+        end
+    end
+
+    def destroy
+        production = Production.find_by(id: params[:id])
+        if production
+            production.destroy()
+            head :no_content
+        else
+            render json: { error: "Production not found "}, status: :not_found
+        end
+    end
+
+    private
+
+    # NOTE: This private method ONLY allows these parameter values to come inside these 'production_params'
+    def production_params
+        params.permit(:title, :genre, :budget, :image, :director, :ongoing, :description)
+    end
+end
+#+end_src
+
+I then refactored the same ''app/controllers/productions_controller.rb' controller file with a special 'only' block:
+#+begin_src ruby
+class ProductionsController < ApplicationController
+    # NOTE: This is added to wrap the 'params' hash below:
+    wrap_parameters format: []
+    def index
+        productions = Production.all()
+        render json: productions, status: :ok
+    end
+
+    def show
+        production = Production.find_by(id: params[:id])
+
+        if production
+            render json: production, only: [:title, :genre, :budget, :image, :director, :ongoing, :description], status: :ok
+        else
+            render json: {error: "production not found"}, status: :not_found
+        end
+    end
+
+    def create
+        # NOTE: I revised this line to instead use 'production_params' from the private method below:
+        # production = Production.create(params)
+        production = Production.create(production_params)
+        render json: production, status: :created
+    end
+
+    def update
+        # find
+        production = Production.find_by(id: params[:id])
+        # update
+        if production
+            production.update(production_params)
+            render json: production, status: :accepted
+        else
+            render json: { error: "Production not found" }, status: :not_found
+        end
+    end
+
+    def destroy
+        production = Production.find_by(id: params[:id])
+        if production
+            production.destroy()
+            head :no_content
+        else
+            render json: { error: "Production not found "}, status: :not_found
+        end
+    end
+
+    private
+
+    # NOTE: This private method ONLY allows these parameter values to come inside these 'production_params'
+    def production_params
+        params.permit(:title, :genre, :budget, :image, :director, :ongoing, :description)
+    end
+end
+#+end_src
+
+I then revised the ''app/controllers/productions_controller.rb' controller file further to only use the 'except:' symbol to just exclude the 'created_at' and 'updated_at' fields:
+#+begin_src ruby
+class ProductionsController < ApplicationController
+    # NOTE: This is added to wrap the 'params' hash below:
+    wrap_parameters format: []
+    def index
+        productions = Production.all()
+        render json: productions, status: :ok
+    end
+
+    def show
+        production = Production.find_by(id: params[:id])
+
+        if production
+            render json: production, except: [:id, :created_at, :updated_at], status: :ok
+        else
+            render json: {error: "production not found"}, status: :not_found
+        end
+    end
+
+    def create
+        # NOTE: I revised this line to instead use 'production_params' from the private method below:
+        # production = Production.create(params)
+        production = Production.create(production_params)
+        render json: production, status: :created
+    end
+
+    def update
+        # find
+        production = Production.find_by(id: params[:id])
+        # update
+        if production
+            production.update(production_params)
+            render json: production, status: :accepted
+        else
+            render json: { error: "Production not found" }, status: :not_found
+        end
+    end
+
+    def destroy
+        production = Production.find_by(id: params[:id])
+        if production
+            production.destroy()
+            head :no_content
+        else
+            render json: { error: "Production not found "}, status: :not_found
+        end
+    end
+
+    private
+
+    # NOTE: This private method ONLY allows these parameter values to come inside these 'production_params'
+    def production_params
+        params.permit(:title, :genre, :budget, :image, :director, :ongoing, :description)
+    end
+end
+#+end_src
+
+I then did a custom rendering method within the 'app/models/production.rb' to be able to display the 'director' data into a 'title' within an output block based function:
+#+begin_src ruby
+class Production < ApplicationRecord
+    has_many :crew_members
+
+    def title_director
+        "#{title}: #{director}"
+    end
+end
+#+end_src
+
+I then modified the 'app/controllers/productions_controller.rb' controller file with the following contents to handle the custom 'title_director' render method:
+#+begin_src ruby
+class ProductionsController < ApplicationController
+    # NOTE: This is added to wrap the 'params' hash below:
+    wrap_parameters format: []
+    def index
+        productions = Production.all()
+        render json: productions, status: :ok
+    end
+
+    def show
+        production = Production.find_by(id: params[:id])
+
+        if production
+            render json: production, except: [:id, :created_at, :updated_at], methods: [:title_director], status: :ok
+        else
+            render json: {error: "production not found"}, status: :not_found
+        end
+    end
+
+    def create
+        # NOTE: I revised this line to instead use 'production_params' from the private method below:
+        # production = Production.create(params)
+        production = Production.create(production_params)
+        render json: production, status: :created
+    end
+
+    def update
+        # find
+        production = Production.find_by(id: params[:id])
+        # update
+        if production
+            production.update(production_params)
+            render json: production, status: :accepted
+        else
+            render json: { error: "Production not found" }, status: :not_found
+        end
+    end
+
+    def destroy
+        production = Production.find_by(id: params[:id])
+        if production
+            production.destroy()
+            head :no_content
+        else
+            render json: { error: "Production not found "}, status: :not_found
+        end
+    end
+
+    private
+
+    # NOTE: This private method ONLY allows these parameter values to come inside these 'production_params'
+    def production_params
+        params.permit(:title, :genre, :budget, :image, :director, :ongoing, :description)
+    end
+end
+#+end_src
+
+I then ran the 'rails s' server command, then made the following 'GET' based request in Postman to check my work:
+- HTTP Verb Used: GET
+- URL Used: http://localhost:3000/productions/5
+
+JSON Response Received:
+#+begin_src json
+{
+    "title": "Carmen",
+    "genre": "Opera",
+    "budget": 80000,
+    "image": "",
+    "ongoing": null,
+    "description": null,
+    "director": null,
+    "title_director": "Carmen: "
+}
+#+end_src
